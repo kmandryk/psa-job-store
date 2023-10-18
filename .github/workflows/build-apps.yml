@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false # Continue with other matrix jobs even if one fails
       matrix:
-        app: ${{ github.event.inputs.apps }}
+        app: [app,api]
     env:
       ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
       ARTIFACTORY_SA_USERNAME: ${{ secrets.ARTIFACTORY_SA_USERNAME }}
