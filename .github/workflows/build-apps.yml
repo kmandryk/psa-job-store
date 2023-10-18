@@ -1,45 +1,38 @@
 name: Build Docker Images
 
 on:
-  push:
-    branches: [main, stage, develop]
-
+  workflow_dispatch: 
+    inputs:
+      apps:
+        description: 'Version'     
+        required: true
+        default: '[app,api]'
 jobs:
   metadata:
     name: Get Metadata
     runs-on: ubuntu-20.04
     outputs:
-      changed-apps: ${{ steps.get-changed-apps.outputs.changes }}
       short-sha: ${{ steps.get-short-sha.outputs.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           ref: ${{ github.ref }}
-      - name: Get Changed Apps
-        id: get-changed-apps
-        uses: dorny/paths-filter@v2
-        with:
-          base: ${{ github.ref }}
-          filters: |
-            api:
-              - 'apps/api/**'
-            app:
-              - 'apps/app/**'
+    
       - name: Get Short SHA
         id: get-short-sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
   build-apps:
     name: Build ${{ matrix.app }}
     needs: metadata
-    if: ${{ needs.metadata.outputs.changed-apps != '[]' && needs.metadata.outputs.changed-apps != '' }}
+    # if: ${{ github.event.inputs.apps != '[]' && needs.metadata.outputs.apps != '' }}
     runs-on: ubuntu-20.04
     environment:
       name: ${{ github.ref_name == 'main' && 'prod' || github.ref_name == 'stage' && 'test' || 'dev' }}
     strategy:
       fail-fast: false # Continue with other matrix jobs even if one fails
       matrix:
-        app: ${{ fromJSON(needs.metadata.outputs.changed-apps) }}
+        app: ${{ github.event.inputs.apps }}
     env:
       ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
       ARTIFACTORY_SA_USERNAME: ${{ secrets.ARTIFACTORY_SA_USERNAME }}
