@@ -28,7 +28,7 @@ jobs:
     # if: ${{ github.event.inputs.apps != '[]' && needs.metadata.outputs.apps != '' }}
     runs-on: ubuntu-20.04
     environment:
-      name: ${{ github.ref_name == 'main' && 'prod' || github.ref_name == 'stage' && 'test' || 'dev' }}
+      name: ${{ github.ref_name == 'main' && 'dev' || github.ref_name == 'stage' && 'test' || 'dev' }}
     strategy:
       fail-fast: false # Continue with other matrix jobs even if one fails
       matrix:
