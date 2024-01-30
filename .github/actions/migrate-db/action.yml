@@ -25,6 +25,6 @@ runs:
     #   shell: bash
     - name: Create the instance
       run: |
-        chmod +x ./.github/actions/create_wp_instance/migrate.sh
+        chmod +x ./.github/actions/migrate-db/migrate.sh
         ./.github/actions/migrate-db/migrate.sh "${{ inputs.environment }}" "${{ inputs.openshift-server }}" "${{ inputs.dev-token }}" "${{ inputs.test-token }}" "${{ inputs.prod-token }}"
       shell: bash
