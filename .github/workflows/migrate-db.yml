@@ -2,6 +2,7 @@ name: Migrate DB Schema
 on:
     push:
       branches: [main, stage, develop]
+    workflow_dispatch:
 jobs:
     metadata:
         name: Get Metadata

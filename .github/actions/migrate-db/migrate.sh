@@ -34,4 +34,4 @@ DATABASE_POD_NAME=$(oc get pods -n $NAMESPACE -l name=api-postgres -o jsonpath='
 oc port-forward $DATABASE_POD_NAME 5432 &
 
 #run the db migration
-npx -w api prisma migrate deploy
+npx -w api prisma migrate status
