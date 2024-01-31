@@ -321,6 +321,7 @@ model Comment {
   record_id   Int
   record_type String
   text        String
+  text2       String
 
   created_at DateTime  @default(now())
   updated_at DateTime  @default(now()) @updatedAt
