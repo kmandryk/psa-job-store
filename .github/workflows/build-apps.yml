@@ -32,12 +32,7 @@ jobs:
     name: Build ${{ matrix.app }}
     needs: metadata
     if: 
-      ${{(github.event_name == 'push' && 
-      needs.metadata.outputs.changed-apps != '[]' && 
-      needs.metadata.outputs.changed-apps != '') ||
-     (github.event_name == 'workflow_run' && 
-      (github.event.workflow_run.conclusion == 'success' || 
-       github.event.workflow_run.event == 'workflow_dispatch'))}}
+      ${{needs.metadata.outputs.changed-apps != '[]' && needs.metadata.outputs.changed-apps != ''}}
     runs-on: ubuntu-20.04
     environment:
       name: ${{ github.ref_name == 'main' && 'prod' || github.ref_name == 'stage' && 'test' || 'dev' }}
