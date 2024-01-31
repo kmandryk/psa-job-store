@@ -43,7 +43,7 @@ jobs:
                 database-url: ${{ secrets.DATABASE_URL }}
     trigger_build_apps:
       needs: migrate
-      if: success() # Ensures this runs only if previous steps were successful
+      if: ${{ !failure() }} # Ensures this runs only if previous steps were successful
       runs-on: ubuntu-latest
       steps:
         - name: Trigger Build Apps Workflow
