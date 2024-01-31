@@ -3,8 +3,7 @@
 ENVIRONMENT=$1
 OPENSHIFT_SERVER=$2
 DEV_TOKEN=$3
-TEST_TOKEN=$4
-PROD_TOKEN=$5
+export DATABASE_URL=$4
 
 #Log in to OpenShift
 echo "Deploying to $ENVIRONMENT"
@@ -24,7 +23,7 @@ case "$ENVIRONMENT" in
     ;;
 esac
 
-NAMESPACE="c0cce6-$ENVIRONMENT"
+NAMESPACE="f3c07a-$ENVIRONMENT"
 
 oc login $OPENSHIFT_SERVER --token=$token --insecure-skip-tls-verify=true
 oc project $NAMESPACE
