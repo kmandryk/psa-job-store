@@ -37,3 +37,5 @@ oc port-forward $DATABASE_POD_NAME 5432 &
 
 #run the db migration
 npx -w api prisma migrate status
+
+exit 0
