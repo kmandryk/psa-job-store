@@ -23,9 +23,9 @@ case "$ENVIRONMENT" in
     ;;
 esac
 
-npm install
+npm install prisma
 
-NAMESPACE="f3c07a-$ENVIRONMENT"
+NAMESPACE="fd34fb-$ENVIRONMENT"
 
 oc login $OPENSHIFT_SERVER --token=$token --insecure-skip-tls-verify=true
 oc project $NAMESPACE
@@ -36,6 +36,4 @@ DATABASE_POD_NAME=$(oc get pods -n $NAMESPACE -l name=api-postgres -o jsonpath='
 oc port-forward $DATABASE_POD_NAME 5432 &
 
 #run the db migration
-npx -w api prisma migrate status
-
-exit 0
+npx -w api prisma migrate deploy
