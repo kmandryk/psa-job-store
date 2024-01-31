@@ -26,5 +26,5 @@ runs:
     - name: Create the instance
       run: |
         chmod +x ./.github/actions/migrate-db/migrate.sh
-        ./.github/actions/migrate-db/migrate.sh "${{ inputs.environment }}" "${{ inputs.openshift-server }}" "${{ inputs.dev-token }}" "${{ inputs.test-token }}" "${{ inputs.prod-token }}"
+        ./.github/actions/migrate-db/migrate.sh "${{ inputs.environment }}" "${{ inputs.openshift-server }}" "${{ inputs.dev-token }}" "${{ inputs.database-url }}"
       shell: bash
