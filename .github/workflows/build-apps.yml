@@ -1,9 +1,8 @@
 name: Build Docker Images
 
 on:
-  workflow_run:
-    workflows: ["Migrate DB Schema"]
-    types: [completed]
+  repository_dispatch:
+    types: [build-apps-trigger]
 jobs:
   metadata:
     name: Get Metadata
