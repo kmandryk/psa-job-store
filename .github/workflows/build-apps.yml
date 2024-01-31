@@ -31,8 +31,7 @@ jobs:
   build-apps:
     name: Build ${{ matrix.app }}
     needs: metadata
-    if: 
-      ${{needs.metadata.outputs.changed-apps != '[]' && needs.metadata.outputs.changed-apps != ''}}
+    if: ${{needs.metadata.outputs.changed-apps != '[]' && needs.metadata.outputs.changed-apps != ''}}
     runs-on: ubuntu-20.04
     environment:
       name: ${{ github.ref_name == 'main' && 'prod' || github.ref_name == 'stage' && 'test' || 'dev' }}
@@ -68,7 +67,7 @@ jobs:
           images: |
             ${{ env.ARTIFACTORY_URL }}/af3c-gen-docker-local/${{ matrix.app }}
           tags: |
-            type=raw,value=testing
+            type=raw,value=${{ github.ref_name }}-${{ steps.app-version.outputs.prop }}-test
       - name: Build and Push
         uses: docker/build-push-action@v4
         with:
