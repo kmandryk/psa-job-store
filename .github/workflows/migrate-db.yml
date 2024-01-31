@@ -40,5 +40,4 @@ jobs:
                 environment: ${{ github.ref_name == 'main' && 'prod' || github.ref_name == 'stage' && 'test' || 'dev' }}
                 openshift-server: ${{ secrets.OPENSHIFT_SERVER }}
                 dev-token: ${{ secrets.OPENSHIFT_DEV_API_TOKEN }}
-                test-token: ${{ secrets.OPENSHIFT_TEST_API_TOKEN }}
-                prod-token: ${{ secrets.OPENSHIFT_PROD_API_TOKEN }}
+                database-url: ${{ secrets.DATABASE_URL }}
