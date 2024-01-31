@@ -1,8 +1,6 @@
 name: Build Docker Images
 
 on:
-  push:
-    branches: [main, stage, develop]
   workflow_run:
     workflows: ["Migrate DB Schema"]
     types: [completed]
