@@ -23,6 +23,8 @@ case "$ENVIRONMENT" in
     ;;
 esac
 
+npm install
+
 NAMESPACE="f3c07a-$ENVIRONMENT"
 
 oc login $OPENSHIFT_SERVER --token=$token --insecure-skip-tls-verify=true
