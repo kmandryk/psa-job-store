@@ -30,20 +30,20 @@ jobs:
         id: get-short-sha
         run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
   build-apps:
-    name: Build ${{ matrix.app }}
-    needs: metadata
-    if: ${{needs.metadata.outputs.changed-apps != '[]' && needs.metadata.outputs.changed-apps != ''}}
+    name: Build app
+    # needs: metadata
+    # if: ${{needs.metadata.outputs.changed-apps != '[]' && needs.metadata.outputs.changed-apps != ''}}
     runs-on: ubuntu-20.04
-    environment:
-      name: ${{ github.event.client_payload.ref_name == 'main' && 'prod' || github.event.client_payload.ref_name == 'stage' && 'test' || 'dev' }}
-    strategy:
-      fail-fast: false # Continue with other matrix jobs even if one fails
-      matrix:
-        app: ${{ fromJSON(needs.metadata.outputs.changed-apps) }}
-    env:
-      ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
-      ARTIFACTORY_SA_USERNAME: ${{ secrets.ARTIFACTORY_SA_USERNAME }}
-      ARTIFACTORY_SA_PASSWORD: ${{ secrets.ARTIFACTORY_SA_PASSWORD }}
+    # environment:
+    #   name: ${{ github.event.client_payload.ref_name == 'main' && 'prod' || github.event.client_payload.ref_name == 'stage' && 'test' || 'dev' }}
+    # strategy:
+    #   fail-fast: false # Continue with other matrix jobs even if one fails
+    #   matrix:
+    #     app: ${{ fromJSON(needs.metadata.outputs.changed-apps) }}
+    # env:
+    #   ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
+    #   ARTIFACTORY_SA_USERNAME: ${{ secrets.ARTIFACTORY_SA_USERNAME }}
+    #   ARTIFACTORY_SA_PASSWORD: ${{ secrets.ARTIFACTORY_SA_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
