@@ -1,0 +1,18 @@
+name: test deploy
+
+on:
+  workflow_dispatch:
+jobs:
+  build-apps:
+    name: Build test
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false # Continue with other matrix jobs even if one fails
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Trigger Deployments
+        uses: ./.github/actions/trigger-deploy
+        with:
+          openshift-server: ${{ secrets.OPENSHIFT_SERVER }}
+          api-token: ${{ secrets.OPENSHIFT_API_TOKEN }}
