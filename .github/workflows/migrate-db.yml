@@ -10,6 +10,12 @@ jobs:
         outputs:
           changed-apps: ${{ steps.get-changed-apps.outputs.changes }}
         steps:
+          - name: Check for Skip CI
+            run: |
+              if git log -1 --pretty=%B | grep -q "\[skip ci\]"; then
+                echo "Skipping CI based on commit message."
+                exit 78
+              fi
           - name: Checkout
             uses: actions/checkout@v3
             with:
@@ -40,6 +46,21 @@ jobs:
                 environment: ${{ github.ref_name == 'main' && 'prod' || github.ref_name == 'stage' && 'test' || 'dev' }}
                 openshift-server: ${{ secrets.OPENSHIFT_SERVER }}
                 api-token: ${{ secrets.OPENSHIFT_API_TOKEN }}
+          - name: Create Version Changeset
+            run: npx changeset version
+          # - name: Get New Version
+          #   id: get-new-version
+          #   run: echo "::set-output name=version::")"
+          #   run: echo "version=$(node -p "require('./package.json').version" >> $GITHUB_OUTPUT
+          - name: Commit Version
+            if: ${{ github.ref_name == 'main' }}
+            uses: stefanzweifel/git-auto-commit-action@v4
+            with:
+              commit_message: "Update version [skip ci]"
+            env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # outputs:
+        #   new-version: ${{ steps.get-new-version.outputs.version }}
     trigger_build_apps:
       needs: migrate
       if: ${{ !failure() }} # Ensures this runs only if previous steps were successful
@@ -52,4 +73,5 @@ jobs:
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
               https://api.github.com/repos/${{ github.repository }}/dispatches \
-              -d '{"event_type": "build-apps-trigger", "client_payload": { "ref": "${{ github.ref }}", "ref_name": "${{ github.ref_name }}" }}'
+              -d '{"event_type": "build-apps-trigger", "client_payload": { "ref": "${{ github.ref }}", "ref_name": "${{ github.ref_name }}"}}"'
+          #, "new_version": "${{ steps.get-new-version.outputs.version }}" }}'
