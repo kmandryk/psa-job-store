@@ -345,6 +345,7 @@ model Comment {
   author_id   String @db.Uuid
   record_id   Int
   record_type String
+  text2       String
   text        String
 
   created_at DateTime  @default(now())
