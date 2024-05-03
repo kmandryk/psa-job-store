@@ -4,31 +4,31 @@ on:
   repository_dispatch:
     types: [build-apps-trigger]
 jobs:
-  metadata:
-    name: Get Metadata
-    runs-on: ubuntu-20.04
-    outputs:
-      changed-apps: ${{ steps.get-changed-apps.outputs.changes }}
-      short-sha: ${{ steps.get-short-sha.outputs.sha }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.client_payload.ref }}
-      - name: Get Changed Apps
-        id: get-changed-apps
-        uses: dorny/paths-filter@v2
-        with:
-          base: ${{ github.event.client_payload.ref }}
-          ref: ${{ github.event.client_payload.ref }}
-          filters: |
-            api:
-              - 'apps/api/**'
-            app:
-              - 'apps/app/**'
-      - name: Get Short SHA
-        id: get-short-sha
-        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+  # metadata:
+  #   name: Get Metadata
+  #   runs-on: ubuntu-20.04
+  #   outputs:
+  #     changed-apps: ${{ steps.get-changed-apps.outputs.changes }}
+  #     short-sha: ${{ steps.get-short-sha.outputs.sha }}
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+  #       with:
+  #         ref: ${{ github.event.client_payload.ref }}
+  #     - name: Get Changed Apps
+  #       id: get-changed-apps
+  #       uses: dorny/paths-filter@v2
+  #       with:
+  #         base: ${{ github.event.client_payload.ref }}
+  #         ref: ${{ github.event.client_payload.ref }}
+  #         filters: |
+  #           api:
+  #             - 'apps/api/**'
+  #           app:
+  #             - 'apps/app/**'
+  #     - name: Get Short SHA
+  #       id: get-short-sha
+  #       run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
   build-apps:
     name: Build app
     # needs: metadata
@@ -89,7 +89,7 @@ jobs:
       #       VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}
       #       KEYCLOAK_REALM_URL=${{ secrets.KEYCLOAK_ISSUER }}
       - name: Trigger Deployments
-        uses: ./.github/actions/trigger_deploy
+        uses: ./.github/actions/trigger-deploy
         with:
           openshift-server: ${{ secrets.OPENSHIFT_SERVER }}
-          api-token: ${{ secrets.OPENSHIFT_API_TOKEN }}
+          api-token: ${{ secrets.OPENSHIFT_TOOLS_API_TOKEN }}
