@@ -66,7 +66,7 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: |
-            ${{ env.ARTIFACTORY_URL }}/af3c-gen-docker-local/${{ matrix.app }}
+            ${{ env.ARTIFACTORY_URL }}/af3c-gen-docker-local-test/${{ matrix.app }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ steps.app-version.outputs.prop }},enable={{is_default_branch}}
