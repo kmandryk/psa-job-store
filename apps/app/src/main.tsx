@@ -26,7 +26,7 @@ export const oidcConfig: AuthProviderProps = {
 };
 
 window.addEventListener('error', function (event) {
-  console.error('Caught by globdsfsfdasdaerewal ddderror fdlistener:', event.error);
+  console.error('Caught by globdsfsfjdasdaerewal ddderror fdlistener:', event.error);
   sendLogToServer(event.error);
 });
 
