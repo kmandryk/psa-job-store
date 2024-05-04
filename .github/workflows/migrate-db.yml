@@ -48,6 +48,8 @@ jobs:
       #       api-token: ${{ secrets.OPENSHIFT_API_TOKEN }}
       - name: Create Version Changeset
         run: npm install @changesets/cli && npx changeset version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # - name: Get New Version
       #   id: get-new-version
       #   run: echo "::set-output name=version::")"
