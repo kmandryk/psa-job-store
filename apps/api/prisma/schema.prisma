@@ -346,7 +346,7 @@ model Comment {
   record_id   Int
   record_type String
   text2       String
-  text4       String
+  text1       String
   text        String
 
   created_at DateTime  @default(now())
