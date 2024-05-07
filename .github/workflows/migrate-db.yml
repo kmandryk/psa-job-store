@@ -10,12 +10,6 @@ jobs:
     outputs:
       changed-apps: ${{ steps.get-changed-apps.outputs.changes }}
     steps:
-      - name: Check for Skip CI
-        run: |
-          if git log -1 --pretty=%B | grep -q "\[skip ci\]"; then
-            echo "Skipping CI based on commit message."
-            exit 78
-          fi
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -50,10 +44,7 @@ jobs:
         run: npm install @changesets/cli && npx changeset version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # - name: Get New Version
-      #   id: get-new-version
-      #   run: echo "::set-output name=version::")"
-      #   run: echo "version=$(node -p "require('./package.json').version" >> $GITHUB_OUTPUT
+
       - name: Commit Version
         if: ${{ github.ref_name == 'main' }}
         uses: stefanzweifel/git-auto-commit-action@v4
