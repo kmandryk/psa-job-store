@@ -347,6 +347,7 @@ model Comment {
   record_type String
   text2       String
   text4d      String
+  texts       String
   text        String
 
   created_at DateTime  @default(now())
