@@ -4,14 +4,12 @@ import { JobProfile, JobProfileState, JobProfileType, Prisma } from '@prisma/cli
 import { JobProfileCreateInput } from '../../@generated/prisma-nestjs-graphql';
 import { PrismaService } from '../../modules/prisma/prisma.service';
 import { AlexandriaError } from '../../utils/alexandria-error';
-import { ClassificationService } from '../classification/classification.service';
 import { SearchService } from '../search/search.service';
 import { FindManyJobProfileWithSearch } from './args/find-many-job-profile-with-search.args';
 
 @Injectable()
 export class JobProfileService {
   constructor(
-    private readonly classificationService: ClassificationService,
     private readonly prisma: PrismaService,
     private readonly searchService: SearchService,
   ) {}
@@ -21,7 +19,6 @@ export class JobProfileService {
     where: any,
     args: any,
     state: string = 'PUBLISHED',
-    owner_id?: string,
     searchConditions?: any,
     include_archived = false,
   ) {
@@ -33,15 +30,17 @@ export class JobProfileService {
       where: {
         is_archived: include_archived,
         ...(searchResultIds != null && { id: { in: searchResultIds } }),
-        ...(owner_id != null && { owner_id }),
+        // ...(owner_id != null && { owner_id }),
         ...(searchConditions != null && searchConditions),
         state,
         ...where,
       },
       ...args,
-      orderBy: [...(args.orderBy || []), { id: 'desc' }],
+      orderBy: [...(args.orderBy || []), { title: 'asc' }],
       include: {
         owner: true,
+        published_by: true,
+        updated_by: true,
         behavioural_competencies: true,
         classifications: {
           include: {
@@ -60,6 +59,11 @@ export class JobProfileService {
         },
         reports_to: true,
         role: true,
+        scopes: {
+          include: {
+            scope: true,
+          },
+        },
         streams: {
           include: {
             stream: true,
@@ -71,7 +75,7 @@ export class JobProfileService {
     });
   }
 
-  private getDraftSearchConditions(userId: string, search: string) {
+  private getDraftSearchConditions(search: string) {
     let searchConditions = {};
     if (search) {
       // Convert search term to a number
@@ -124,8 +128,8 @@ export class JobProfileService {
       args,
       'DRAFT',
       // userId,
-      null,
-      this.getDraftSearchConditions(userId, search),
+      // null,
+      this.getDraftSearchConditions(search),
     );
 
     if (sortByClassificationName) {
@@ -161,8 +165,8 @@ export class JobProfileService {
       args,
       'DRAFT',
       // userId,
-      null,
-      this.getDraftSearchConditions(userId, search),
+      // null,
+      this.getDraftSearchConditions(search),
       true,
     );
 
@@ -211,7 +215,7 @@ export class JobProfileService {
       // Find the index of the selected profile within the sorted job profiles
 
       const selectedProfileIndex = (sortedJobProfiles as any[]).findIndex(
-        (profile) => profile.id === parseInt(selectProfile),
+        (profile) => profile.number === parseInt(selectProfile),
       );
 
       if (selectedProfileIndex !== -1) {
@@ -298,9 +302,9 @@ export class JobProfileService {
       );
 
       // Find the index of the selected profile within the sorted job profiles
-      const selectedProfileIndex = (sortedJobProfiles as any[]).findIndex(
-        (profile) => profile.id === parseInt(selectProfile),
-      );
+      const selectedProfileIndex = (sortedJobProfiles as any[]).findIndex((profile) => {
+        return profile.number === parseInt(selectProfile);
+      });
 
       if (selectedProfileIndex !== -1) {
         // Calculate the page number based on the selected profile index and take value
@@ -432,7 +436,7 @@ export class JobProfileService {
   }
 
   async getJobProfile(id: number) {
-    return this.prisma.jobProfile.findUnique({
+    const jobProfile = await this.prisma.jobProfile.findUnique({
       where: { id },
       include: {
         classifications: {
@@ -450,7 +454,11 @@ export class JobProfileService {
             organization: true,
           },
         },
-        scope: true,
+        scopes: {
+          include: {
+            scope: true,
+          },
+        },
         role: true,
         role_type: true,
         streams: {
@@ -459,8 +467,56 @@ export class JobProfileService {
           },
         },
         context: true,
+        behavioural_competencies: {
+          include: {
+            behavioural_competency: true,
+          },
+        },
       },
     });
+    return jobProfile;
+  }
+
+  async getJobProfileByNumber(number: number) {
+    const jobProfile = await this.prisma.jobProfile.findUnique({
+      where: { number },
+      include: {
+        classifications: {
+          include: {
+            classification: true,
+          },
+        },
+        jobFamilies: {
+          include: {
+            jobFamily: true,
+          },
+        },
+        organizations: {
+          include: {
+            organization: true,
+          },
+        },
+        scopes: {
+          include: {
+            scope: true,
+          },
+        },
+        role: true,
+        role_type: true,
+        streams: {
+          include: {
+            stream: true,
+          },
+        },
+        context: true,
+        behavioural_competencies: {
+          include: {
+            behavioural_competency: true,
+          },
+        },
+      },
+    });
+    return jobProfile;
   }
 
   async getJobProfileCount({ search, where }: FindManyJobProfileWithSearch) {
@@ -478,7 +534,7 @@ export class JobProfileService {
 
   async getJobProfilesDraftsCount({ search, where }: FindManyJobProfileWithSearch, userId: string) {
     // const searchResultIds = search != null ? await this.searchService.searchJobProfiles(search) : null;
-    const searchConditions = this.getDraftSearchConditions(userId, search);
+    const searchConditions = this.getDraftSearchConditions(search);
 
     return await this.prisma.jobProfile.count({
       where: {
@@ -495,7 +551,7 @@ export class JobProfileService {
 
   async getJobProfilesArchivedCount({ search, where }: FindManyJobProfileWithSearch, userId: string) {
     // const searchResultIds = search != null ? await this.searchService.searchJobProfiles(search) : null;
-    const searchConditions = this.getDraftSearchConditions(userId, search);
+    const searchConditions = this.getDraftSearchConditions(search);
 
     return await this.prisma.jobProfile.count({
       where: {
@@ -544,7 +600,9 @@ export class JobProfileService {
 
   async createOrUpdateJobProfile(data: JobProfileCreateInput, userId: string, id?: number) {
     // todo: catch the "number" constraint failure and process the error on the client appropriately
-
+    const jobProfileState = data.state ? data.state : JobProfileState.DRAFT;
+    const updatedBy = jobProfileState === 'DRAFT' ? userId : null;
+    const publishedBy = jobProfileState === 'PUBLISHED' ? userId : null;
     const result = await this.prisma.jobProfile.upsert({
       where: { id: id || -1 },
       create: {
@@ -584,16 +642,19 @@ export class JobProfileService {
           connect: { id: data.role_type.connect.id },
         },
 
-        ...(data.scope && {
-          scope: {
-            connect: { id: data.scope.connect.id },
+        ...(data.scopes && {
+          scopes: {
+            create: data.scopes.create.map((item) => ({
+              scope: {
+                connect: { id: item.scope.connect.id },
+              },
+            })),
           },
         }),
-        state: data.state ? data.state : JobProfileState.DRAFT,
+        state: jobProfileState,
         type: data.organizations.create.length > 0 ? JobProfileType.MINISTRY : JobProfileType.CORPORATE, // should be MINISTRY if ministries provided, otherwise corporate
-        owner: {
-          connect: { id: userId },
-        },
+        published_by: publishedBy ? { connect: { id: publishedBy } } : undefined,
+        updated_by: updatedBy ? { connect: { id: updatedBy } } : undefined,
         jobFamilies: {
           create: data.jobFamilies.create.map((item) => ({
             jobFamily: {
@@ -640,7 +701,7 @@ export class JobProfileService {
         program_overview: data.program_overview,
         review_required: data.review_required,
 
-        ...(data.state && { state: data.state }),
+        ...(data.state && { state: jobProfileState }),
 
         behavioural_competencies: {
           deleteMany: {}, // Deletes all existing competencies for this job profile
@@ -682,12 +743,16 @@ export class JobProfileService {
 
         role_type: { connect: { id: data.role_type.connect.id } },
 
-        ...(data.scope && {
-          scope: {
-            connect: { id: data.scope.connect.id },
+        ...(data.scopes && {
+          scopes: {
+            deleteMany: {},
+            create: data.scopes.create.map((item) => ({
+              scope: { connect: { id: item.scope.connect.id } },
+            })),
           },
         }),
-
+        published_by: publishedBy ? { connect: { id: publishedBy } } : undefined,
+        updated_by: updatedBy ? { connect: { id: updatedBy } } : undefined,
         // Update jobFamilies
         jobFamilies: {
           deleteMany: {},
@@ -735,6 +800,20 @@ export class JobProfileService {
     return result;
   }
 
+  async updateJobProfileState(jobProfileId: number, jobProfileState: string, userId: string) {
+    const updatedBy = jobProfileState === 'DRAFT' ? userId : null;
+    const publishedBy = jobProfileState === 'PUBLISHED' ? userId : null;
+    await this.prisma.jobProfile.update({
+      where: { id: jobProfileId || -1 },
+      data: {
+        state: jobProfileState as JobProfileState,
+        published_by: publishedBy ? { connect: { id: publishedBy } } : undefined,
+        updated_by: updatedBy ? { connect: { id: updatedBy } } : undefined,
+      },
+    });
+    return true;
+  }
+
   async duplicateJobProfile(jobProfileId: number, userId: string): Promise<number> {
     const jobProfileToDuplicate = await this.prisma.jobProfile.findUnique({
       where: { id: jobProfileId },
@@ -759,7 +838,11 @@ export class JobProfileService {
             organization: true,
           },
         },
-        scope: true,
+        scopes: {
+          include: {
+            scope: true,
+          },
+        },
         role: true,
         role_type: true,
         streams: {
@@ -781,7 +864,17 @@ export class JobProfileService {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { id, role_id, role_type_id, scope_id, owner_id, title, ...jobProfileDataWithoutId } = jobProfileToDuplicate;
+    const {
+      id,
+      role_id,
+      role_type_id,
+      scopes,
+      owner_id,
+      updated_by_id,
+      published_by_id,
+      title,
+      ...jobProfileDataWithoutId
+    } = jobProfileToDuplicate;
 
     // Modify fields that should be unique for the new record
     // Create a new JobProfileCreateInput object
@@ -789,8 +882,14 @@ export class JobProfileService {
       // Spread the original job profile data
       ...jobProfileDataWithoutId,
       title: title + ' (Copy)',
-      // Set the owner to the current user
-      owner: { connect: { id: userId } },
+      // Set the updated_by to the current user
+      owner: {
+        connect: { id: userId },
+      },
+      updated_by: { connect: { id: userId } },
+      published_by: jobProfileToDuplicate.published_by_id
+        ? { connect: { id: jobProfileToDuplicate.published_by_id } }
+        : undefined,
 
       // Set the state to DRAFT or as per your requirement
       state: JobProfileState.DRAFT,
@@ -819,7 +918,12 @@ export class JobProfileService {
           organization: { connect: { id: org.organization.id } },
         })),
       },
-      scope: jobProfileToDuplicate.scope ? { connect: { id: jobProfileToDuplicate.scope.id } } : undefined,
+      scopes: {
+        create: jobProfileToDuplicate.scopes.map((rt) => ({
+          scope: { connect: { id: rt.scope_id } },
+        })),
+      },
+      //jobProfileToDuplicate.scope ? { connect: { id: jobProfileToDuplicate.scope.id } } : undefined,
       role: jobProfileToDuplicate.role ? { connect: { id: jobProfileToDuplicate.role.id } } : undefined,
       role_type: jobProfileToDuplicate.role_type ? { connect: { id: jobProfileToDuplicate.role_type.id } } : undefined,
       streams: {
@@ -911,6 +1015,9 @@ export class JobProfileService {
           where: { job_profile_id: jobProfileId },
         }),
         this.prisma.jobProfileReportsTo.deleteMany({
+          where: { job_profile_id: jobProfileId },
+        }),
+        this.prisma.jobProfileScopeLink.deleteMany({
           where: { job_profile_id: jobProfileId },
         }),
         this.prisma.jobProfile.delete({

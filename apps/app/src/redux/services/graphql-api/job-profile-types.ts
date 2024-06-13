@@ -92,6 +92,20 @@ export interface Stream {
   stream: StreamDetail;
 }
 
+export interface Scope {
+  id: number;
+  name?: string;
+  description?: string;
+}
+
+export interface ScopeItem {
+  scope: {
+    id: number;
+    name?: string;
+    description?: string;
+  };
+}
+
 export interface JobProfileModel {
   id: number;
   accountabilities: AccountabilitiesModel[];
@@ -122,7 +136,8 @@ export interface JobProfileModel {
   role_type: { id: number; name?: string };
   reports_to: ClassificationModelWrapped[];
   organizations: OrganizationsModelWrapped[];
-  scope: { id: number; name?: string; description?: string };
+  scope?: Scope; // new is Scope[], old is Scope for backwards compat
+  scopes: ScopeItem[];
   review_required: boolean;
   professions: ProfessionsModel[];
   program_overview: string | TrackedFieldArrayItem;
@@ -135,6 +150,7 @@ export interface JobProfileModel {
   all_organizations: boolean;
   all_reports_to: boolean;
   state?: string;
+  is_archived?: boolean;
 }
 
 export interface ProfessionsModel {
@@ -159,6 +175,16 @@ export interface BehaviouralCompetency {
   description: string;
 }
 
+export interface EditFieldModel {
+  text: string;
+  is_readonly?: boolean;
+  is_significant?: boolean;
+
+  // HM view
+  isCustom?: boolean;
+  disabled?: boolean;
+}
+
 export interface AccountabilitiesModel {
   text: string | TrackedFieldArrayItem;
   is_readonly?: boolean;
@@ -167,6 +193,9 @@ export interface AccountabilitiesModel {
   // HM view
   isCustom?: boolean;
   disabled?: boolean;
+
+  // total comp
+  nonEditable?: boolean;
 }
 
 export interface SecuritiyScreeningModel {
@@ -179,9 +208,14 @@ export interface SecuritiyScreeningModel {
 }
 
 export class TrackedFieldArrayItem {
-  value: string;
+  text: string;
   disabled?: boolean;
   isCustom?: boolean;
+  is_significant?: boolean;
+  is_readonly?: boolean;
+
+  // total comp
+  nonEditable?: boolean;
 }
 
 interface BehaviouralCompetencyConnect {
@@ -244,6 +278,10 @@ interface JobFamilyCreateInput {
   jobFamily: JobFamilyConnectInput;
 }
 
+interface ScopeCreateInput {
+  scope: JobFamilyConnectInput;
+}
+
 interface StreamConnectInput {
   connect: {
     id: number;
@@ -290,9 +328,9 @@ export interface CreateJobProfileInput {
         description: string;
       };
     };
-    role: NumberConnectInput; // Assuming this connects to a classification-like entity
-    role_type: NumberConnectInput; // Assuming this connects to a classification-like entity
-    scope: NumberConnectInput; // Assuming this connects to a classification-like entity
+    role: NumberConnectInput;
+    role_type: NumberConnectInput;
+    scope: ScopeCreateInput;
     jobFamilies: {
       create: JobFamilyCreateInput[];
     };
@@ -322,6 +360,10 @@ export interface DeleteJobProfileResponse {
 
 export interface UnarchiveJobProfileResponse {
   deleteJobProfile: number;
+}
+
+export interface UpdateJobProfileResponse {
+  updateJobProfile: number;
 }
 
 export interface GetJobProfilesArgs {
@@ -360,4 +402,8 @@ export interface GetJobProfileArgs {
 
 export interface GetJobProfileResponse {
   jobProfile: JobProfileModel;
+}
+
+export interface GetJobProfileByNumberResponse {
+  jobProfileByNumber: JobProfileModel;
 }

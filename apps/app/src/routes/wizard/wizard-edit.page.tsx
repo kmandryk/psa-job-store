@@ -4,11 +4,7 @@ import { Button, Col, FormInstance, List, Menu, Modal, Popover, Row, Typography 
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import LoadingComponent from '../../components/app/common/components/loading.component';
-import {
-  ClassificationModel,
-  GetClassificationsResponse,
-  JobProfileModel,
-} from '../../redux/services/graphql-api/job-profile-types';
+import { ClassificationModel, JobProfileModel } from '../../redux/services/graphql-api/job-profile-types';
 import {
   GetPositionRequestResponseContent,
   useDeletePositionRequestMutation,
@@ -17,6 +13,7 @@ import {
 import { WizardSteps } from '../wizard/components/wizard-steps.component';
 import WizardEditProfile from './components/wizard-edit-profile';
 import { WizardPageWrapper } from './components/wizard-page-wrapper.component';
+import StatusIndicator from './components/wizard-position-request-status-indicator';
 import { useWizardContext } from './components/wizard.provider';
 
 export interface InputData {
@@ -29,6 +26,7 @@ interface WizardEditPageProps {
   onNext?: () => void;
   disableBlockingAndNavigateHome: () => void;
   positionRequest: GetPositionRequestResponseContent | null;
+  setCurrentStep: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 export const WizardEditPage: React.FC<WizardEditPageProps> = ({
@@ -36,6 +34,7 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
   onNext,
   disableBlockingAndNavigateHome,
   positionRequest,
+  setCurrentStep,
 }) => {
   // "wizardData" may be the data that was already saved in context. This is used to support "back" button
   // functionality from the review screen (so that form contains data the user has previously entered)
@@ -43,22 +42,24 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
     wizardData,
     setWizardData,
     classificationsData,
-    setClassificationsData,
     positionRequestProfileId,
     positionRequestId,
     setRequiresVerification,
+    setPositionRequestData,
   } = useWizardContext();
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingBack, setIsLoadingBack] = useState(false);
   const [saveAndQuitLoading, setSaveAndQuitLoading] = useState(false);
+  const [isFormModified, setIsFormModified] = useState(false);
+
+  const handleFormChange = (state: boolean) => {
+    setIsFormModified(state);
+  };
 
   const [updatePositionRequest] = useUpdatePositionRequestMutation();
 
   const profileId = positionRequestProfileId;
 
-  function receivedClassificationsDataCallback(data: GetClassificationsResponse) {
-    setClassificationsData(data);
-  }
   function getClassificationById(id: string): ClassificationModel | undefined {
     // If data is loaded, find the classification by ID
     if (classificationsData) {
@@ -98,28 +99,28 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
       })),
       role: { id: originalData.roleId || null },
       role_type: { id: originalData.roleTypeId || null },
-      scope: { id: originalData.scopeId || null },
+      scopes: [], //{ id: originalData.scopeId || null },
       reports_to: [],
       organizations: [],
       review_required: false,
       professions: [],
-      professional_registration_requirements: originalData.professional_registration.filter(
-        (reg: { value: string }) => reg.value.trim() !== '',
+      professional_registration_requirements: originalData.professional_registration_requirements.filter(
+        (reg: { text: string }) => reg.text.trim() !== '',
       ),
       optional_requirements: originalData.optional_requirements.filter(
-        (req: { value: string }) => req.value.trim() !== '',
+        (req: { text: string }) => req.text.trim() !== '',
       ),
-      preferences: originalData.preferences.filter((pref: { value: string }) => pref.value.trim() !== ''),
+      preferences: originalData.preferences.filter((pref: { text: string }) => pref.text.trim() !== ''),
       knowledge_skills_abilities: originalData.knowledge_skills_abilities.filter(
-        (ksa: { value: string }) => ksa.value.trim() !== '',
+        (ksa: { text: string }) => ksa.text.trim() !== '',
       ),
-      willingness_statements: originalData.provisos
+      willingness_statements: originalData.willingness_statements
         .map((proviso: any) => ({
-          value: proviso.value,
+          text: proviso.text,
           isCustom: proviso.isCustom,
           disabled: proviso.disabled,
         }))
-        .filter((stmt: { value: string }) => stmt.value.trim() !== ''),
+        .filter((stmt: { text: string }) => stmt.text.trim() !== ''),
       security_screenings: originalData.security_screenings.filter(
         (screening: { text: string }) => screening.text.trim() !== '',
       ),
@@ -137,7 +138,7 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
 
   // const navigate = useNavigate();
 
-  const saveData = async (action: string) => {
+  const saveData = async (action: string, step?: number) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const errors = Object.values(wizardEditProfileRef.current?.getFormErrors()).map((error: any) => {
       const message =
@@ -145,8 +146,8 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
           ? error.message
           : error.root != null
             ? error.root?.message
-            : error.value != null
-              ? error.value.message
+            : error.text != null
+              ? error.text.message
               : 'Error';
       return message;
     });
@@ -172,7 +173,7 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
     else setSaveAndQuitLoading(true);
 
     try {
-      // Create an entry in My Positions
+      // Create an entry in My Position Requests
 
       const formData = wizardEditProfileRef.current?.getFormData();
       // console.log('formData: ', formData);
@@ -180,18 +181,42 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
       const transformedData = transformFormData(formData);
       // console.log('transformedData: ', transformedData);
 
-      // return;
+      // Check if any classification is undefined or if the array is empty
+      const hasUndefinedClassification = transformedData?.classifications?.some(
+        (item) => item.classification === undefined,
+      );
+      const isClassificationsEmpty = transformedData?.classifications?.length === 0;
+
+      if (
+        (hasUndefinedClassification || isClassificationsEmpty || !transformedData?.classifications) &&
+        action === 'next'
+      ) {
+        Modal.error({
+          title: 'Error',
+          content: 'Could not find classification, please try again later or contact an administrator.',
+        });
+        return;
+      }
+
+      // if (transformedData.classifications == [{}]) console.log('whhoops');
 
       setWizardData(transformedData);
       try {
-        if (positionRequestId)
-          await updatePositionRequest({
+        if (positionRequestId) {
+          const resp = await updatePositionRequest({
             id: positionRequestId,
-            step: action === 'next' ? 3 : action === 'back' ? 1 : 2,
+            step: !step && step != 0 ? (action === 'next' ? 3 : action === 'back' ? 1 : 2) : step,
+            // increment max step only if it's not incremented
+            ...(action === 'next' && (positionRequest?.max_step_completed ?? 0) < 3 && !step && step != 0
+              ? { max_step_completed: 3 }
+              : {}),
             profile_json: transformedData,
-            title: formData.title.value,
+            title: formData.title.text,
+            returnFullObject: true,
             // classification_code: classification ? classification.code : '',
           }).unwrap();
+          setPositionRequestData(resp.updatePositionRequest ?? null);
+        }
       } catch (error) {
         // Handle the error, possibly showing another modal
         Modal.error({
@@ -202,15 +227,17 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
       }
 
       if (action === 'next') {
-        if (onNext) onNext();
+        if (step || step == 0) setCurrentStep(step);
+        else if (onNext) onNext();
       } else if (action === 'back') {
         if (onBack) {
-          console.log('onback');
+          // console.log('onback');
           onBack();
         }
       }
       return true;
     } catch (e) {
+      // throw e;
       return false;
     } finally {
       if (action === 'next') setIsLoading(false);
@@ -219,8 +246,8 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
     }
   };
 
-  const onNextCallback = async () => {
-    await saveData('next');
+  const onNextCallback = async ({ step }: { step?: number } = {}) => {
+    await saveData('next', step);
   };
 
   const onBackCallback = async () => {
@@ -268,7 +295,7 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
             <div style={{ padding: '5px 0' }}>
               Save and quit
               <Typography.Text type="secondary" style={{ marginTop: '5px', display: 'block' }}>
-                Saves your progress. You can access this position request from the 'My Positions' page.
+                Saves your progress. You can access this position request from the 'My Position Requests' page.
               </Typography.Text>
             </div>
           </div>
@@ -279,13 +306,52 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
             <div style={{ padding: '5px 0' }}>
               Delete
               <Typography.Text type="secondary" style={{ marginTop: '5px', display: 'block' }}>
-                Removes this position request from 'My Positions'. This action is irreversible.
+                Removes this position request from 'My Position Requests'. This action is irreversible.
               </Typography.Text>
             </div>
           </Menu.Item>
         </Menu.ItemGroup>
       </Menu>
     );
+  };
+
+  // const [isSwitchStepLoading, setIsSwitchStepLoading] = useState(false);
+
+  const switchStep = async (step: number) => {
+    if (isFormModified) {
+      Modal.confirm({
+        title: 'Unsaved Changes',
+        content: (
+          <div>
+            <p>You have unsaved changes. Do you want to save them before switching steps?</p>
+          </div>
+        ),
+        // okButtonProps: {
+        //   loading: isSwitchStepLoading,
+        // },
+        // cancelButtonProps: {
+        //   loading: isSwitchStepLoading,
+        // },
+        okText: 'Save',
+        cancelText: 'Cancel',
+        onOk: async () => {
+          // setIsSwitchStepLoading(true);
+          onNextCallback({ step: step });
+          setIsFormModified(false);
+          // setIsSwitchStepLoading(false);
+        },
+        onCancel: () => {
+          // Do nothing if the user cancels
+        },
+      });
+    } else {
+      setCurrentStep(step);
+      if (positionRequestId)
+        await updatePositionRequest({
+          id: positionRequestId,
+          step: step,
+        });
+    }
   };
 
   return (
@@ -305,18 +371,33 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
       hpad={false}
       grayBg={false}
       pageHeaderExtra={[
+        <div style={{ marginRight: '1rem' }}>
+          <StatusIndicator status={positionRequest?.status ?? ''} />
+        </div>,
         <Popover content={getMenuContent()} trigger="click" placement="bottomRight">
           <Button icon={<EllipsisOutlined />}></Button>
         </Popover>,
         <Button onClick={onBackCallback} key="back" data-testid="back-button" loading={isLoadingBack}>
           Back
         </Button>,
-        <Button key="next" type="primary" onClick={onNextCallback} data-testid="next-button" loading={isLoading}>
+        <Button
+          key="next"
+          type="primary"
+          onClick={() => {
+            onNextCallback();
+          }}
+          data-testid="next-button"
+          loading={isLoading}
+        >
           Save and next
         </Button>,
       ]}
     >
-      <WizardSteps current={2}></WizardSteps>
+      <WizardSteps
+        current={2}
+        onStepClick={switchStep}
+        maxStepCompleted={positionRequest?.max_step_completed}
+      ></WizardSteps>
       {/* <WizardEditControlBar
         style={{ marginBottom: '1rem' }}
         onNext={onNextCallback}
@@ -346,7 +427,7 @@ export const WizardEditPage: React.FC<WizardEditPageProps> = ({
               id={profileId?.toString()}
               submitText="Review Profile"
               showBackButton={true}
-              receivedClassificationsDataCallback={receivedClassificationsDataCallback}
+              handleFormChange={handleFormChange}
             ></WizardEditProfile>
           </Col>
         </Row>

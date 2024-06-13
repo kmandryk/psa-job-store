@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -84,6 +84,9 @@
     "typescript": "^5.0.2",
     "undici": "^5.28.1",
     "vite": "^4.4.5"
+  },
+  "engines": {
+    "node": ">=20.11.1 <21.0.0"
   },
   "cypress-cucumber-preprocessor": {
     "nonGlobalStepDefinitions": true,

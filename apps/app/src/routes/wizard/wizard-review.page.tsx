@@ -11,6 +11,7 @@ import { JobProfile } from '../job-profiles/components/job-profile.component';
 import { WizardSteps } from '../wizard/components/wizard-steps.component';
 import WizardEditControlBar from './components/wizard-edit-control-bar';
 import { WizardPageWrapper } from './components/wizard-page-wrapper.component';
+import StatusIndicator from './components/wizard-position-request-status-indicator';
 import { useWizardContext } from './components/wizard.provider';
 import './wizard-review.page.css';
 
@@ -19,6 +20,7 @@ interface WizardReviewPageProps {
   onBack?: () => void;
   disableBlockingAndNavigateHome: () => void;
   positionRequest: GetPositionRequestResponseContent | null;
+  setCurrentStep: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 export const WizardReviewPage: React.FC<WizardReviewPageProps> = ({
@@ -26,16 +28,25 @@ export const WizardReviewPage: React.FC<WizardReviewPageProps> = ({
   onBack,
   disableBlockingAndNavigateHome,
   positionRequest,
+  setCurrentStep,
 }) => {
   const [updatePositionRequest] = useUpdatePositionRequestMutation();
-  const { wizardData, positionRequestId } = useWizardContext();
+  const { wizardData, positionRequestId, setPositionRequestData } = useWizardContext();
   const [isLoading, setIsLoading] = useState(false);
 
   const onNextCallback = async () => {
     setIsLoading(true);
     try {
       if (positionRequestId) {
-        await updatePositionRequest({ id: positionRequestId, step: 4 }).unwrap();
+        const resp = await updatePositionRequest({
+          id: positionRequestId,
+          step: 4,
+
+          // increment max step only if it's not incremented
+          ...(positionRequest?.max_step_completed != 4 ? { max_step_completed: 4 } : {}),
+          returnFullObject: true,
+        }).unwrap();
+        setPositionRequestData(resp.updatePositionRequest ?? null);
         if (onNext) onNext();
         // navigate('/wizard/confirm');
       }
@@ -107,7 +118,7 @@ export const WizardReviewPage: React.FC<WizardReviewPageProps> = ({
           <div style={{ padding: '5px 0' }}>
             Save and quit
             <Typography.Text type="secondary" style={{ marginTop: '5px', display: 'block' }}>
-              Saves your progress. You can access this position request from the 'My Positions' page.
+              Saves your progress. You can access this position request from the 'My Position Requests' page.
             </Typography.Text>
           </div>
         </Menu.Item>
@@ -117,13 +128,22 @@ export const WizardReviewPage: React.FC<WizardReviewPageProps> = ({
             <div style={{ padding: '5px 0' }}>
               Delete
               <Typography.Text type="secondary" style={{ marginTop: '5px', display: 'block' }}>
-                Removes this position request from 'My Positions'. This action is irreversible.
+                Removes this position request from 'My Position Requests'. This action is irreversible.
               </Typography.Text>
             </div>
           </Menu.Item>
         </Menu.ItemGroup>
       </Menu>
     );
+  };
+
+  const switchStep = async (step: number) => {
+    setCurrentStep(step);
+    if (positionRequestId)
+      await updatePositionRequest({
+        id: positionRequestId,
+        step: step,
+      });
   };
 
   return (
@@ -151,6 +171,9 @@ export const WizardReviewPage: React.FC<WizardReviewPageProps> = ({
         hpad={false}
         grayBg={false}
         pageHeaderExtra={[
+          <div style={{ marginRight: '1rem' }}>
+            <StatusIndicator status={positionRequest?.status ?? ''} />
+          </div>,
           <Popover content={getMenuContent()} trigger="click" placement="bottomRight">
             <Button icon={<EllipsisOutlined />}></Button>
           </Popover>,
@@ -162,7 +185,11 @@ export const WizardReviewPage: React.FC<WizardReviewPageProps> = ({
           </Button>,
         ]}
       >
-        <WizardSteps current={3}></WizardSteps>
+        <WizardSteps
+          onStepClick={switchStep}
+          current={3}
+          maxStepCompleted={positionRequest?.max_step_completed}
+        ></WizardSteps>
 
         <div
           style={{
@@ -204,7 +231,7 @@ export const WizardReviewPage: React.FC<WizardReviewPageProps> = ({
                 profileData={wizardData}
                 showBackToResults={false}
                 showDiff={showDiff}
-                id={wizardData?.id.toString()}
+                id={wizardData?.number.toString()}
                 showBasicInfo={false}
               />
             </Col>

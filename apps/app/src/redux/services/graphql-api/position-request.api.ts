@@ -33,6 +33,7 @@ export interface CreatePositionRequestInput {
 export interface GetPositionRequestResponseContent {
   id: number;
   step?: number;
+  max_step_completed?: number;
   reports_to_position_id?: number;
   orgchart_json?: any;
   profile_json?: any;
@@ -57,6 +58,7 @@ export interface GetPositionRequestResponseContent {
   additional_info?: AdditionalInfo;
 
   crm_id?: string;
+  crm_lookup_name?: string;
 }
 
 export interface AdditionalInfo {
@@ -71,6 +73,10 @@ export interface AdditionalInfo {
 export interface GetPositionRequestResponse {
   positionRequest?: GetPositionRequestResponseContent;
   sharedPositionRequest?: GetPositionRequestResponseContent; // this is for GetSharedPositionRequestResponse
+}
+
+export interface UpdatePositionRequestResponse {
+  updatePositionRequest: GetPositionRequestResponseContent;
 }
 
 export interface SubmitPositionRequestResponse {
@@ -89,7 +95,7 @@ export interface PositionNeedsReviewResponseContent {
 export interface PositionRequestStatusCounts {
   draft: number;
   completed: number;
-  inReview: number;
+  verification: number;
   total: number;
 }
 
@@ -114,6 +120,7 @@ export interface CreatePositionRequestResponse {
 export interface UpdatePositionRequestInput {
   id: number;
   step?: number;
+  max_step_completed?: number;
   reports_to_position_id?: number;
   orgchart_json?: any;
   profile_json?: any;
@@ -134,6 +141,7 @@ export interface UpdatePositionRequestInput {
       id: string;
     };
   };
+  returnFullObject?: boolean;
 }
 
 export interface SubmitPositionRequestInput {
@@ -209,6 +217,7 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
               ) {
                 id
                 step
+                max_step_completed
                 reports_to_position_id
                 parent_job_profile_id
                 user_id
@@ -227,11 +236,12 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
                   number
                 }
                 crm_id
+                crm_lookup_name
               }
               positionRequestsCount(search: $search, where: $where, onlyCompletedForAll: $onlyCompletedForAll) {
                 draft
                 completed
-                inReview
+                verification
                 total
               }
             }
@@ -248,7 +258,7 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
       },
     }),
     getPositionRequest: build.query<GetPositionRequestResponse, GetPositionRequestArgs>({
-      providesTags: ['positionRequest'],
+      // providesTags: ['positionRequest'],
       // result
       //   ? [{ type: 'PositionRequest' as const, id: result.positionRequest.id }]
       //   : [{ type: 'PositionRequest' as const, id: 'id' }],
@@ -259,6 +269,7 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
               positionRequest(id: ${args.id}) {
                   id
                   step
+                  max_step_completed
                   reports_to_position_id
                   parent_job_profile_id
                   profile_json
@@ -280,6 +291,7 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
                   }
                   additional_info
                   crm_id
+                  crm_lookup_name
                   shareUUID
               }
           }
@@ -288,7 +300,7 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
       },
     }),
     getSharedPositionRequest: build.query<GetPositionRequestResponse, GetPositionRequestArgs>({
-      providesTags: ['positionRequest'],
+      // providesTags: ['positionRequest'],
       // result
       //   ? [{ type: 'PositionRequest' as const, id: result.positionRequest.id }]
       //   : [{ type: 'PositionRequest' as const, id: 'id' }],
@@ -299,6 +311,7 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
               sharedPositionRequest(uuid: "${args.uuid}") {
                   id
                   step
+                  max_step_completed
                   reports_to_position_id
                   parent_job_profile_id
                   profile_json
@@ -320,6 +333,7 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
                   }
                   additional_info
                   crm_id
+                  crm_lookup_name
               }
           }
           `,
@@ -341,14 +355,43 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
         };
       },
     }),
-    updatePositionRequest: build.mutation<GetPositionRequestResponse, UpdatePositionRequestInput>({
-      invalidatesTags: ['positionRequest'],
+    updatePositionRequest: build.mutation<UpdatePositionRequestResponse, UpdatePositionRequestInput>({
+      // invalidatesTags: ['positionRequest'],
       query: (input: UpdatePositionRequestInput) => {
         return {
           document: gql`
-            mutation UpdatePositionRequest($id: Int!, $updateInput: PositionRequestUpdateInput!) {
-              updatePositionRequest(id: $id, updateInput: $updateInput) {
+            mutation UpdatePositionRequest(
+              $id: Int!
+              $updateInput: PositionRequestUpdateInput!
+              $returnFullObject: Boolean
+            ) {
+              updatePositionRequest(id: $id, updateInput: $updateInput, returnFullObject: $returnFullObject) {
                 id
+                step
+                max_step_completed
+                reports_to_position_id
+                parent_job_profile_id
+                profile_json
+                orgchart_json
+                user_id
+                user_name
+                email
+                title
+                position_number
+                classification_code
+                submission_id
+                status
+                updated_at
+                submitted_at
+                department_id
+                approved_at
+                parent_job_profile {
+                  number
+                }
+                additional_info
+                crm_id
+                crm_lookup_name
+                shareUUID
               }
             }
           `,
@@ -357,7 +400,9 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
             updateInput: {
               ...input,
               id: undefined,
+              returnFullObject: undefined,
             },
+            returnFullObject: input.returnFullObject || false,
           },
         };
       },
@@ -371,21 +416,30 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
               submitPositionRequest(id: $id, comment: $comment) {
                 id
                 step
+                max_step_completed
                 reports_to_position_id
-                department_id
                 parent_job_profile_id
                 profile_json
+                orgchart_json
                 user_id
-                title
-                position_number
-                classification_id
-                classification_code
                 user_name
                 email
+                title
+                position_number
+                classification_code
                 submission_id
-                approved_at
                 status
                 updated_at
+                submitted_at
+                department_id
+                approved_at
+                parent_job_profile {
+                  number
+                }
+                additional_info
+                crm_id
+                crm_lookup_name
+                shareUUID
               }
             }
           `,
@@ -486,7 +540,7 @@ export const positionRequestApi = graphqlApi.injectEndpoints({
               positionRequestsCount(search: $search, where: $where) {
                 draft
                 completed
-                inReview
+                verification
                 total
               }
             }
@@ -536,4 +590,5 @@ export const {
   usePositionNeedsRivewQuery,
   useLazyPositionNeedsRivewQuery,
   useGetSharedPositionRequestQuery,
+  useLazyGetSharedPositionRequestQuery,
 } = positionRequestApi;

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Modal } from 'antd';
-import React, { ReactNode, useContext } from 'react';
+import React, { ReactNode, useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useCreatePositionRequestMutation,
@@ -15,11 +15,13 @@ interface PositionContextProps {
     orgChartData: any,
     current_reports_to_position_id?: number | undefined,
     reSelectSupervisor?: () => void,
-  ) => Promise<boolean>;
+    changeStep?: boolean,
+  ) => Promise<string>;
 }
 
 const PositionContext = React.createContext<PositionContextProps | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePosition = (): PositionContextProps => {
   const context = useContext(PositionContext);
   if (!context) {
@@ -33,9 +35,10 @@ interface PositionProviderProps {
 }
 
 export const PositionProvider: React.FC<PositionProviderProps> = ({ children }) => {
-  const { setPositionRequestId, positionRequestId, resetWizardContext } = useWizardContext();
+  const { positionRequestId, resetWizardContext, setPositionRequestData } = useWizardContext();
   const [createPositionRequest] = useCreatePositionRequestMutation();
   const [updatePositionRequest] = useUpdatePositionRequestMutation();
+  const [isSwitchStepLoading, setIsSwitchStepLoading] = useState(false);
   const navigate = useNavigate();
 
   const createNewPosition = async (
@@ -44,17 +47,19 @@ export const PositionProvider: React.FC<PositionProviderProps> = ({ children }) 
     orgChartData: any,
     current_reports_to_position_id?: number | undefined,
     reSelectSupervisor?: () => void,
-  ): Promise<boolean> => {
+    changeStep: boolean = true,
+  ): Promise<string> => {
     // we are not editing a draft position request (creatign position from dashboard or from org chart page)
-    // we can create a new position from the my-positions org chart view, or directly from the org chart, or from home page
+    // we can create a new position from the my-position-requests org chart view, or directly from the org chart, or from home page
     if (
-      location.pathname.startsWith('/my-positions/create') ||
+      location.pathname.startsWith('/my-position-requests/create') ||
       location.pathname.startsWith('/org-chart') ||
       location.pathname == '/' || // home page
       location.pathname == '' // home page
     ) {
       const positionRequestInput = {
         step: 1,
+        max_step_completed: 1,
         title: 'Untitled',
         reports_to_position_id: reportingPositionId,
         department: { connect: { id: selectedDepartment ?? '' } },
@@ -62,9 +67,9 @@ export const PositionProvider: React.FC<PositionProviderProps> = ({ children }) 
       };
       // 'CreatePositionRequestInput': profile_json, parent_job_profile, title, classification_code
       const resp = await createPositionRequest(positionRequestInput).unwrap();
-      setPositionRequestId(resp.createPositionRequest);
-      navigate(`/my-positions/${resp.createPositionRequest}`, { replace: true });
-      return true;
+      // setPositionRequestId(resp.createPositionRequest);
+      navigate(`/my-position-requests/${resp.createPositionRequest}`, { replace: true });
+      return 'CREATE_NEW';
     } else {
       // we are editing a draft position request - update existing position request
       if (positionRequestId != null && selectedDepartment != null) {
@@ -83,11 +88,19 @@ export const PositionProvider: React.FC<PositionProviderProps> = ({ children }) 
               ),
               okText: 'Change supervisor',
               cancelText: 'Cancel',
+              okButtonProps: {
+                loading: isSwitchStepLoading,
+              },
+              cancelButtonProps: {
+                loading: isSwitchStepLoading,
+              },
               onOk: async () => {
+                setIsSwitchStepLoading(true);
                 resetWizardContext(); // this ensures that any previous edits are cleared
-                await updatePositionRequest({
+                const resp = await updatePositionRequest({
                   id: positionRequestId,
                   step: 1,
+                  max_step_completed: 1, // reset max step
                   reports_to_position_id: reportingPositionId,
                   department: { connect: { id: selectedDepartment } },
                   orgchart_json: orgChartData,
@@ -96,28 +109,34 @@ export const PositionProvider: React.FC<PositionProviderProps> = ({ children }) 
                   parent_job_profile: { connect: { id: null } },
                   additional_info: null,
                   title: null,
+                  returnFullObject: true,
                 }).unwrap();
-                resolve(true);
+
+                setPositionRequestData(resp.updatePositionRequest ?? null);
+                setIsSwitchStepLoading(false);
+                resolve('CHANGED_SUPERVISOR');
               },
               onCancel: () => {
                 // re-select supervisor
                 reSelectSupervisor?.();
-                resolve(false);
+                resolve('CANCELLED');
               },
             });
           });
         } else {
           // user is updating existing position request, but did not change supervisor
           // do not show the modal, just update the step
-          return updatePositionRequest({
-            id: positionRequestId,
-            step: 1,
-          })
-            .unwrap()
-            .then(() => true);
+          if (changeStep)
+            return updatePositionRequest({
+              id: positionRequestId,
+              step: 1,
+            })
+              .unwrap()
+              .then(() => 'NO_CHANGE');
+          else return 'NO_CHANGE';
         }
       }
-      return true;
+      return 'DEFAULT';
     }
   };
 

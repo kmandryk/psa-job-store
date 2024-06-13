@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
+import { JsonObject } from '@prisma/client/runtime/library';
 import { btoa } from 'buffer';
-import { Elements, autolayout, generateJobProfile } from 'common-kit';
+import { Elements, autolayout, generateJobProfile, getALStatus } from 'common-kit';
 import dayjs from 'dayjs';
 import { diff_match_patch } from 'diff-match-patch';
 import { Packer } from 'docx';
@@ -33,9 +34,9 @@ import {
 } from '../external/models/position-create.input';
 import { PeoplesoftService } from '../external/peoplesoft.service';
 import { PositionService } from '../external/position.service';
+import { JobProfileService } from '../job-profile/job-profile.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ExtendedFindManyPositionRequestWithSearch } from './args/find-many-position-request-with-search.args';
-import { convertIncidentStatusToPositionRequestStatus } from './utils/convert-incident-status-to-position-request-status.util';
 
 @ObjectType()
 export class PositionRequestResponse {
@@ -67,13 +68,13 @@ export class PositionRequestStatusCounts {
   completed: number;
 
   @Field(() => Int)
-  inReview: number;
+  verification: number;
 
   @Field(() => Int)
   total: number;
 
   @Field(() => Int)
-  escalatedCount: number;
+  reviewCount: number;
 
   @Field(() => Int)
   actionRequiredCount: number;
@@ -109,6 +110,7 @@ export class PositionRequestApiService {
     private readonly peoplesoftService: PeoplesoftService,
     private readonly prisma: PrismaService,
     private readonly positionService: PositionService,
+    private readonly jobProfileService: JobProfileService,
   ) {}
 
   async generateUniqueShortId(length: number, retries: number = 5): Promise<string> {
@@ -131,11 +133,12 @@ export class PositionRequestApiService {
     return this.prisma.positionRequest.create({
       data: {
         department: data.department,
-        additional_info: data.additional_info,
+        additional_info: data.additional_info === null ? Prisma.DbNull : data.additional_info,
         step: data.step,
+        max_step_completed: data.max_step_completed,
         reports_to_position_id: data.reports_to_position_id,
-        profile_json: data.profile_json,
-        orgchart_json: data.orgchart_json,
+        profile_json: data.profile_json === null ? Prisma.DbNull : data.profile_json,
+        orgchart_json: data.orgchart_json === null ? Prisma.DbNull : data.orgchart_json,
         // TODO: AL-146
         // user: data.user,
         user_id: userId,
@@ -163,9 +166,8 @@ export class PositionRequestApiService {
         where: { id },
         data: {
           additional_info: {
-            update: {
-              comments: comment,
-            },
+            ...(positionRequest.additional_info as JsonObject),
+            comments: comment,
           },
         },
       });
@@ -253,26 +255,37 @@ export class PositionRequestApiService {
               orgchart_json: autolayout({ edges, nodes }) as any,
             },
           });
+          // CRM Incident Managements
+          const incident = await this.createOrUpdateCrmIncidentForPositionRequest(id);
+          const { crm_id, crm_lookup_name, crm_status, crm_category } = incident;
+          if (positionObj) {
+            const incomingPositionRequestStatus = getALStatus({
+              category: crm_category,
+              crm_status: crm_status,
+              ps_status: positionObj['A.POSN_STATUS'],
+              ps_effective_status: positionObj['EFF_STATUS'],
+            });
+
+            if (incomingPositionRequestStatus === 'UNKNOWN') {
+              this.logger.warn(
+                `Failed to map to an internal status for crm_id: ${crm_id}, crm_lookup_name: ${crm_lookup_name}, crm status:  ${crm_status}, crm category: ${crm_category}, ps status: ${positionObj['A.POSN_STATUS']}`,
+              );
+            }
+
+            // we will potentially create PRs with UNKNOWN status if there is an issue with CRM or PS creation
+            positionRequest = await this.prisma.positionRequest.update({
+              where: { id },
+              data: {
+                crm_id: incident.id,
+                status: incomingPositionRequestStatus as PositionRequestStatus,
+              },
+            });
+          }
         }
       }
     } catch (error) {
       this.logger.error(error);
     }
-
-    try {
-      // CRM Incident Managements
-      const incident = await this.createOrUpdateCrmIncidentForPositionRequest(id);
-      positionRequest = await this.prisma.positionRequest.update({
-        where: { id },
-        data: {
-          crm_id: incident.id,
-          status: convertIncidentStatusToPositionRequestStatus(+incident.statusWithType.status.id),
-        },
-      });
-    } catch (error) {
-      this.logger.error(error);
-    }
-
     return positionRequest;
   }
 
@@ -353,6 +366,7 @@ export class PositionRequestApiService {
         approved_at: true,
         submitted_at: true,
         crm_id: true,
+        crm_lookup_name: true,
         shareUUID: true,
         additional_info: true,
       },
@@ -481,7 +495,6 @@ export class PositionRequestApiService {
   }
 
   async getPositionRequest(id: number, userId: string, userRoles: string[] = []) {
-    // console.log('getPositionRequest!', userRoles);
     let whereCondition: { id: number; user_id?: UuidFilter; NOT?: Array<PositionRequestWhereInput> } = { id };
 
     // If the user does not have the "total-compesation" or "classification" role, the filter will include the requesting user id
@@ -605,18 +618,18 @@ export class PositionRequestApiService {
     // Get counts for each status
     const draftCount = await getCountForStatus(PositionRequestStatus.DRAFT);
     const completedCount = await getCountForStatus(PositionRequestStatus.COMPLETED);
-    const inReviewCount = await getCountForStatus(PositionRequestStatus.IN_REVIEW);
-    const escalatedCount = await getCountForStatus(PositionRequestStatus.ESCALATED);
+    const verificationCount = await getCountForStatus(PositionRequestStatus.VERIFICATION);
+    const reviewCount = await getCountForStatus(PositionRequestStatus.REVIEW);
     const actionRequiredCount = await getCountForStatus(PositionRequestStatus.ACTION_REQUIRED);
 
     // Return the counts
     return {
       draft: draftCount,
       completed: completedCount,
-      inReview: inReviewCount,
-      escalatedCount: escalatedCount,
+      verification: verificationCount,
+      reviewCount: reviewCount,
       actionRequiredCount: actionRequiredCount,
-      total: draftCount + completedCount + inReviewCount + escalatedCount + actionRequiredCount,
+      total: draftCount + completedCount + verificationCount + reviewCount + actionRequiredCount,
     };
   }
 
@@ -773,16 +786,25 @@ export class PositionRequestApiService {
       updatePayload.step = updateData.step;
     }
 
+    if (updateData.max_step_completed !== undefined) {
+      updatePayload.max_step_completed = updateData.max_step_completed;
+    }
+
     if (updateData.reports_to_position_id !== undefined) {
       updatePayload.reports_to_position_id = updateData.reports_to_position_id;
     }
 
     if (updateData.profile_json !== undefined) {
-      updatePayload.profile_json = updateData.profile_json;
+      updatePayload.profile_json = updateData.profile_json === null ? Prisma.DbNull : updateData.profile_json;
+      // attach original profile json
+      if (updateData.profile_json !== null) {
+        const originalProfile = await this.jobProfileService.getJobProfile(updateData.profile_json.id);
+        updateData.profile_json.original_profile_json = originalProfile;
+      }
     }
 
     if (updateData.orgchart_json !== undefined) {
-      updatePayload.orgchart_json = updateData.orgchart_json;
+      updatePayload.orgchart_json = updateData.orgchart_json === null ? Prisma.DbNull : updateData.orgchart_json;
     }
 
     if (updateData.title !== undefined) {
@@ -793,9 +815,9 @@ export class PositionRequestApiService {
       updatePayload.classification_id = updateData.classification_id;
     }
 
-    if (updateData.status !== undefined) {
-      updatePayload.status = updateData.status;
-    }
+    // if (updateData.status !== undefined) {
+    //   updatePayload.status = updateData.status;
+    // }
 
     if (updateData.parent_job_profile !== undefined) {
       if (updateData.parent_job_profile.connect.id == null) updatePayload.parent_job_profile = { disconnect: true };
@@ -945,9 +967,9 @@ export class PositionRequestApiService {
       if (additionalInfo.comments !== undefined) {
         (updatePayload.additional_info as Record<string, Prisma.JsonValue>).comments = additionalInfo.comments;
       }
-    } else if (additionalInfo == null) {
+    } else if (additionalInfo === null) {
       updatingAdditionalInfo = true;
-      updatePayload.additional_info = null;
+      updatePayload.additional_info = Prisma.DbNull;
     }
 
     if (!updatingAdditionalInfo) delete updatePayload.additional_info;
@@ -1001,8 +1023,8 @@ export class PositionRequestApiService {
     }
   }
 
-  async deletePositionRequest(id: number) {
-    const result = await this.prisma.positionRequest.delete({ where: { id } });
+  async deletePositionRequest(id: number, userId: string) {
+    const result = await this.prisma.positionRequest.delete({ where: { id, user_id: userId, status: 'DRAFT' } });
     return result;
   }
 
@@ -1021,9 +1043,11 @@ export class PositionRequestApiService {
     });
 
     // If the Job Profile is denoted as requiring review, it _must_ be reviewed every time
+    let profilesRequiresReview = false;
     if (jobProfile.review_required === true) {
+      profilesRequiresReview = true;
       reasons.push('Job Profile is denoted as requiring review');
-      return { result: true, reasons: reasons };
+      // return { result: true, reasons: reasons };
     }
 
     // If the job profile is _not_ denoted as requiring review, it must be reviewed _only_ if significant sections have been changed
@@ -1093,7 +1117,8 @@ export class PositionRequestApiService {
       this.dataHasChanges(
         JSON.stringify(jobProfileSignficantSections.education),
         JSON.stringify(prJobProfileSignificantSections.education),
-      ) && jobProfile.jobFamilies.some((jf) => jf.jobFamily.name != 'Administrative Services'), // AL-619 this is a temporary measure to disable education requirements for admin family
+      ) && !jobProfile.jobFamilies.some((jf) => jf.jobFamily.name == 'Administrative Services'), // AL-619 this is a temporary measure to disable education requirements for admin family
+
       // Job Experience
       this.dataHasChanges(
         JSON.stringify(jobProfileSignficantSections.job_experience),
@@ -1122,7 +1147,10 @@ export class PositionRequestApiService {
       }
     }
 
-    return { result: significantSectionChanges.some((value) => value === true), reasons: reasons };
+    return {
+      result: significantSectionChanges.some((value) => value === true) || profilesRequiresReview,
+      reasons: reasons,
+    };
   }
 
   async createOrUpdateCrmIncidentForPositionRequest(id: number) {
@@ -1281,11 +1309,21 @@ export class PositionRequestApiService {
     if (positionRequest.crm_id === null) {
       // console.log(JSON.stringify(data));
 
-      this.logger.debug('incident creation ' + JSON.stringify(data));
+      // this.logger.debug('incident creation ' + JSON.stringify(data));
       incident = await this.crmService.createIncident(data);
     } else {
       await this.crmService.updateIncident(positionRequest.crm_id, data);
-      incident = await this.crmService.getIncident(positionRequest.crm_id);
+    }
+    // re-fetch the data in the structure we need
+    incident = await this.crmService.getIncident(incident.id);
+
+    if (incident.crm_lookup_name != null) {
+      await this.prisma.positionRequest.update({
+        where: { id: positionRequest.id },
+        data: {
+          crm_lookup_name: incident.crm_lookup_name,
+        },
+      });
     }
 
     return incident;
@@ -1350,6 +1388,7 @@ export class PositionRequestApiService {
     return position;
   }
 
+  //deprecated
   async updatePositionRequestStatus(id: number, status: number) {
     return await this.crmService.updateIncidentStatus(id, status);
   }

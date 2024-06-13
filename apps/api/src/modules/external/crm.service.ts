@@ -46,11 +46,11 @@ export class CrmService {
             crm_id: { not: null },
           },
           {
-            status: { not: { equals: 'COMPLETED' } },
+            status: { not: { in: ['COMPLETED', 'CANCELLED'] } },
           },
         ],
       },
-      select: { crm_id: true },
+      select: { crm_id: true, crm_lookup_name: true },
     });
 
     if (positionRequests.length === 0) return [];
@@ -74,7 +74,7 @@ export class CrmService {
     const response = await firstValueFrom(
       this.request(
         Endpoint.Query,
-        `query=USE REPORT;SELECT id,statusWithType.status.lookupName, category.lookupName FROM incidents WHERE id IN (${positionRequests
+        `query=USE REPORT;SELECT id,lookupName,statusWithType.status.lookupName, category.lookupName FROM incidents WHERE id IN (${positionRequests
           .map((pr) => pr.crm_id)
           .join(',')})`,
       ).pipe(
@@ -164,18 +164,21 @@ export class CrmService {
 
   async getIncident(id: number) {
     const response = await firstValueFrom(
-      this.httpService
-        .get(`${this.configService.get('CRM_URL')}/${Endpoint.Incidents}/${id}`, { headers: this.headers })
-        .pipe(
-          map((r) => r.data),
-          retry(3),
-          catchError((err) => {
-            throw new Error(err);
-          }),
-        ),
+      this.request(
+        Endpoint.Query,
+        `query=USE REPORT;SELECT id,lookupName,statusWithType.status.lookupName, category.lookupName FROM incidents WHERE id = (${id})`,
+      ).pipe(
+        map((r) => {
+          return r.data;
+        }),
+        retry(3),
+        catchError((err) => {
+          throw new Error(err);
+        }),
+      ),
     );
-
-    return response;
+    const [crm_id, crm_lookup_name, crm_status, crm_category] = response.items[0].rows[0];
+    return { crm_id, crm_lookup_name, crm_status, crm_category };
   }
 
   async updateIncidentStatus(incidentId: number, newStatus: number) {

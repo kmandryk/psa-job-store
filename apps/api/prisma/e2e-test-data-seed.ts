@@ -1041,7 +1041,6 @@ async function seed() {
     all_organizations: true,
     is_archived: false,
 
-    scope_id: null,
     role_id: 1,
     role_type_id: null,
     type: 'CORPORATE',
@@ -1123,6 +1122,8 @@ async function seed() {
     job_experience: [],
     updated_at: undefined,
     owner_id: undefined,
+    updated_by_id: undefined,
+    published_by_id: undefined,
   };
 
   const profile194: JobProfile = {
@@ -1140,7 +1141,6 @@ async function seed() {
     all_organizations: true,
     is_archived: false,
 
-    scope_id: null,
     role_id: 1,
     role_type_id: null,
     type: 'CORPORATE',
@@ -1226,6 +1226,8 @@ async function seed() {
     job_experience: [],
     updated_at: undefined,
     owner_id: undefined,
+    updated_by_id: undefined,
+    published_by_id: undefined,
   };
 
   const profile200: JobProfile = {
@@ -1243,7 +1245,6 @@ async function seed() {
     all_organizations: true,
     is_archived: false,
 
-    scope_id: null,
     role_id: 1,
     role_type_id: null,
     state: 'PUBLISHED',
@@ -1359,6 +1360,8 @@ async function seed() {
     job_experience: [],
     updated_at: undefined,
     owner_id: undefined,
+    updated_by_id: undefined,
+    published_by_id: undefined,
   };
 
   const profile208: JobProfile = {
@@ -1376,7 +1379,6 @@ async function seed() {
     all_organizations: true,
     is_archived: false,
 
-    scope_id: null,
     role_id: 1,
     role_type_id: null,
     state: 'PUBLISHED',
@@ -1478,6 +1480,8 @@ async function seed() {
     job_experience: [],
     updated_at: undefined,
     owner_id: undefined,
+    updated_by_id: undefined,
+    published_by_id: undefined,
   };
 
   const profile210: JobProfile = {
@@ -1495,7 +1499,6 @@ async function seed() {
     all_organizations: true,
     is_archived: false,
 
-    scope_id: null,
     role_id: 1,
     role_type_id: null,
     state: 'PUBLISHED',
@@ -1612,6 +1615,8 @@ async function seed() {
     job_experience: [],
     updated_at: undefined,
     owner_id: undefined,
+    updated_by_id: undefined,
+    published_by_id: undefined,
   };
 
   const profile212: JobProfile = {
@@ -1629,7 +1634,6 @@ async function seed() {
     all_organizations: true,
     is_archived: false,
 
-    scope_id: null,
     role_id: 1,
     role_type_id: null,
     state: 'PUBLISHED',
@@ -1750,6 +1754,8 @@ async function seed() {
     job_experience: [],
     updated_at: undefined,
     owner_id: undefined,
+    updated_by_id: undefined,
+    published_by_id: undefined,
   };
 
   const profile247: JobProfile = {
@@ -1759,7 +1765,6 @@ async function seed() {
     total_comp_create_form_misc: { employeeGroup: 'GEU' },
     all_reports_to: false,
     all_organizations: true,
-    scope_id: null,
     role_id: 1,
     role_type_id: null,
     state: 'PUBLISHED',
@@ -1915,6 +1920,8 @@ async function seed() {
       'Professional registration requirement 1',
       'Professional registration requirement 2',
     ],
+    updated_by_id: undefined,
+    published_by_id: undefined,
   };
 
   const jobProfiles = [profile189, profile194, profile200, profile208, profile210, profile212, profile247];
@@ -2763,10 +2770,10 @@ async function seed() {
         approved_at: new Date(),
         status: 'DRAFT',
         updated_at: new Date(),
-        additional_info_work_location_id: 'LOC01',
-        additional_info_department_id: 'DEPT01',
-        additional_info_excluded_mgr_position_number: 'MG1001',
-        additional_info_comments: 'Urgent requirement due to project needs.',
+        // additional_info_work_location_id: 'LOC01',
+        // additional_info_department_id: 'DEPT01',
+        // additional_info_excluded_mgr_position_number: 'MG1001',
+        // additional_info_comments: 'Urgent requirement due to project needs.',
       },
       {
         crm_id: 54322,
@@ -3178,10 +3185,10 @@ async function seed() {
         approved_at: new Date(),
         status: 'DRAFT',
         updated_at: new Date(),
-        additional_info_work_location_id: null,
-        additional_info_department_id: null,
-        additional_info_excluded_mgr_position_number: null,
-        additional_info_comments: null,
+        // additional_info_work_location_id: null,
+        // additional_info_department_id: null,
+        // additional_info_excluded_mgr_position_number: null,
+        // additional_info_comments: null,
       },
       {
         crm_id: 54321,
@@ -3577,12 +3584,12 @@ async function seed() {
         submission_id: 'SUB002',
         submitted_at: new Date(),
         approved_at: new Date(),
-        status: 'IN_REVIEW',
+        status: 'VERIFICATION',
         updated_at: new Date(),
-        additional_info_work_location_id: 'LOC02',
-        additional_info_department_id: 'DEPT02',
-        additional_info_excluded_mgr_position_number: 'MG2002',
-        additional_info_comments: 'Needs experienced individual for leadership.',
+        // additional_info_work_location_id: 'LOC02',
+        // additional_info_department_id: 'DEPT02',
+        // additional_info_excluded_mgr_position_number: 'MG2002',
+        // additional_info_comments: 'Needs experienced individual for leadership.',
       },
       {
         crm_id: 67890,
@@ -3980,10 +3987,10 @@ async function seed() {
         approved_at: new Date(),
         status: 'COMPLETED',
         updated_at: new Date(),
-        additional_info_work_location_id: 'LOC03',
-        additional_info_department_id: 'DEPT03',
-        additional_info_excluded_mgr_position_number: 'MG3003',
-        additional_info_comments: 'Looking for a specialist in machine learning.',
+        // additional_info_work_location_id: 'LOC03',
+        // additional_info_department_id: 'DEPT03',
+        // additional_info_excluded_mgr_position_number: 'MG3003',
+        // additional_info_comments: 'Looking for a specialist in machine learning.',
       },
     ],
   });
