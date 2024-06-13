@@ -97,6 +97,8 @@ jobs:
     steps:
       - name: Trigger Migration
         run: |
+          echo ${{ github.ref }}
+          echo ${{ github.repository.default_branch }}
           curl \
             -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
