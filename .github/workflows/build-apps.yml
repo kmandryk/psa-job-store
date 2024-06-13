@@ -60,14 +60,14 @@ jobs:
         id: app-version
         uses: notiz-dev/github-action-json-property@release
         with:
-          path: apps/${{ matrix.app }}/package.json
+          path: apps/app/package.json
           prop_path: version
       - name: Prepare Container Metadata
         id: docker-metadata
         uses: docker/metadata-action@v4
         with:
           images: |
-            ${{ env.ARTIFACTORY_URL }}/af3c-gen-docker-local/${{ matrix.app }}
+            ${{ env.ARTIFACTORY_URL }}/af3c-gen-docker-local/app
           tags: |
             type=raw,value=latest,enable=${{ github.ref == github.repository.default_branch }}
             type=raw,value=${{ steps.app-version.outputs.prop }},enable=${{ github.ref == github.repository.default_branch }}
