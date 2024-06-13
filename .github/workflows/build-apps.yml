@@ -56,24 +56,22 @@ jobs:
       #     registry: ${{ env.ARTIFACTORY_URL }}
       #     username: ${{ env.ARTIFACTORY_SA_USERNAME }}
       #     password: ${{ env.ARTIFACTORY_SA_PASSWORD }}
-      # - name: Get App Version
-      #   id: app-version
-      #   uses: notiz-dev/github-action-json-property@release
-      #   with:
-      #     path: apps/${{ matrix.app }}/package.json
-      #     prop_path: version
-      # - name: Prepare Container Metadata
-      #   id: docker-metadata
-      #   uses: docker/metadata-action@v4
-      #   with:
-      #     images: |
-      #       ${{ env.ARTIFACTORY_URL }}/af3c-gen-docker-local/${{ matrix.app }}
-      #     tags: |
-      #       type=raw,value=latest,enable={{is_default_branch}}
-      #       # type=raw,value=latest,enable=${{ github.ref == github.event.repository.default_branch }}
-      #       type=raw,value=${{ steps.app-version.outputs.prop }},enable=${{ github.ref == github.event.repository.default_branch }}
-      #       type=raw,value=${{ github.ref_name }}-latest,enable=${{ github.ref != github.event.repository.default_branch }}
-      #       # type=raw,value=${{ github.ref_name }}-latest,enable=${{ github.ref != github.event.repository.default_branch }}
+      - name: Get App Version
+        id: app-version
+        uses: notiz-dev/github-action-json-property@release
+        with:
+          path: apps/${{ matrix.app }}/package.json
+          prop_path: version
+      - name: Prepare Container Metadata
+        id: docker-metadata
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ env.ARTIFACTORY_URL }}/af3c-gen-docker-local/${{ matrix.app }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == github.repository.default_branch }}
+            type=raw,value=${{ steps.app-version.outputs.prop }},enable=${{ github.ref == github.repository.default_branch }}
+            type=raw,value=${{ github.ref_name }}-latest,enable=${{ github.ref != github.repository.default_branch }}
       # - name: Build and Push
       #   uses: docker/build-push-action@v4
       #   with:
