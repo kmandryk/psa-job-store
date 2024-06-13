@@ -98,7 +98,8 @@ jobs:
       - name: Trigger Migration
         run: |
           echo ${{ github.ref }}
-          echo ${{ github.ref == github.repository }}
+          echo ${{ github.ref_name }}
+          echo ${{ github.repository }}
           echo ${{ github.event.repository.default_branch }}
           echo ${{ github.repository.default_branch }}
           curl \
