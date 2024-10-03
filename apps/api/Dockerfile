@@ -11,6 +11,14 @@ ARG KEYCLOAK_REALM_URL
 ARG KEYCLOAK_CLIENT_ID_PRIVATE
 ARG KEYCLOAK_CLIENT_ID_PUBLIC
 
+RUN test -n "$SSO_ENVIRONMENT"
+RUN test -n "$SSO_INTEGRATION_ID"
+RUN test -n "$CSS_API_CLIENT_ID"
+RUN test -n "$CSS_API_CLIENT_SECRET"
+RUN test -n "$KEYCLOAK_REALM_URL"
+RUN test -n "$KEYCLOAK_CLIENT_ID_PRIVATE"
+RUN test -n "$KEYCLOAK_CLIENT_ID_PUBLIC"
+
 # Copy application dependency manifests to the container image.
 COPY package*.json ./
 

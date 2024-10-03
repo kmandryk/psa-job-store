@@ -8,7 +8,12 @@ ARG VITE_KEYCLOAK_CLIENT_ID
 ARG VITE_KEYCLOAK_REDIRECT_URL
 ARG VITE_SUPPORT_EMAIL
 ARG VITE_ENV
-
+RUN test -n "$VITE_BACKEND_URL"
+RUN test -n "$VITE_KEYCLOAK_REALM_URL"
+RUN test -n "$VITE_KEYCLOAK_CLIENT_ID"
+RUN test -n "$VITE_KEYCLOAK_REDIRECT_URL"
+RUN test -n "$VITE_SUPPORT_EMAIL"
+RUN test -n "$VITE_ENV"
 # Copy application dependency manifests to the container image.
 COPY package*.json ./
 COPY packages ./packages
