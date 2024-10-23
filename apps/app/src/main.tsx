@@ -37,7 +37,7 @@ window.addEventListener('error', function (event) {
 });
 
 window.addEventListener('unhandledrejection', function (event) {
-  console.error('Unhandled promie rejection:', event.reason);
+  console.error('Unhandled promise rejection:', event.reason);
   sendLogToServer(event.reason);
 });
 
