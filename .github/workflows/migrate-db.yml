@@ -59,7 +59,7 @@ jobs:
   deploy:
     name: Deploy
     needs: metadata
-    if: ${{ contains(needs.metadata.outputs.changed-apps, 'apps') || contains(needs.metadata.outputs.changed-apps, 'apps') }}
+    if: ${{ contains(needs.metadata.outputs.changed-apps, 'app') || contains(needs.metadata.outputs.changed-apps, 'api') }}
     runs-on: ubuntu-20.04
     environment:
       name: ${{ github.event.client_payload.ref_name == 'main' && 'prod' || github.event.client_payload.ref_name == 'stage' && 'test' || 'dev' }}
