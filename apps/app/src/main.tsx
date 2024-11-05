@@ -55,7 +55,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             // hashed: false,
             components: {
               Layout: {
-                siderBg: '#FFF',
+                siderBg: '#FF',
               },
             },
             token: {
