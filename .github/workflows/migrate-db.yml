@@ -81,5 +81,5 @@ jobs:
         with:
           openshift-server: ${{ secrets.OPENSHIFT_SERVER }}
           api-token: ${{ secrets.OPENSHIFT_API_TOKEN }}
-          project: ${{ join(fromJson(needs.metadata.outputs.changed-apps) | map(!contains('migration')), ',') }}
+          project: ${{ needs.metadata.outputs.changed-apps }}
           environment: ${{ github.event.client_payload.ref_name == 'main' && 'prod' || github.event.client_payload.ref_name == 'stage' && 'test' || 'dev' }}
